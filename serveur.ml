@@ -24,7 +24,7 @@ let make_addr_l file =
   addr_l
 ;;
 
-let server file =
+let server () =
   let addr = Network.get_my_addr () in
   let rec exec_proc c_in c_out =
     Network.parent := Some(getsockname (descr_of_in_channel c_in));
@@ -38,7 +38,6 @@ let server file =
       output_value c_out v
     end
   in
-  Network.addr_l := make_addr_l file;
   establish_server exec_proc (ADDR_INET(addr, Network.port_nb))
 ;;
 
@@ -46,12 +45,10 @@ let server file =
 let _ =
   Arg.parse [] (set_file input_file) usage;
   
-  if !input_file = "" then begin
-    eprintf "No input file\n@?";
-    exit 2
-  end;
+  if !input_file <> "" then
+    Network.addr_l := make_addr_l file;
   
-  server !input_file
+  server ()
 ;;
 
 
