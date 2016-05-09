@@ -3,6 +3,7 @@
 open Printf;;
 open Unix;;
 open Network;;
+open Marshal;;
 
 let input_file = ref "";;
 
@@ -27,12 +28,17 @@ let make_addr_l file =
 let server () =
   let addr = Network.get_my_addr () in
   let rec exec_proc c_in c_out =
+    print_endline "Connection etabli !";
     Network.parent := Some(getsockname (descr_of_in_channel c_in));
-    let (init : string) = input_value c_in in
+    print_endline "parent initailise !";
+    let (init : string) = read_from_channel c_in in
+    print_endline "recuperation du message d initialisation !";
     if init <> "INIT" then
       exec_proc c_in c_out
     else begin
-      let (proc : unit Kahn.process) = input_value c_in in
+      printf "%s" init; print_endline "";
+      let proc = read_from_channel c_in in
+      print_endline "proc recupere !!!";
       let v = Network.Kahn.run proc in
       output_value c_out "TERMINE";
       output_value c_out v
@@ -41,12 +47,13 @@ let server () =
   establish_server exec_proc (ADDR_INET(addr, Network.port_nb))
 ;;
 
-
 let _ =
   Arg.parse [] (set_file input_file) usage;
   
   if !input_file <> "" then
     Network.addr_l := make_addr_l !input_file;
+
+  List.iter (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a)) !Network.addr_l;
   
   server ()
 ;;

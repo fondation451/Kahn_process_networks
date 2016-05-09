@@ -2,6 +2,7 @@
 
 open Kahn;;
 open Unix;;
+open Marshal;;
 
 exception No_Channel;;
 
@@ -11,6 +12,13 @@ let parent = ref None;; (* ADDR_INET(inet_addr_loopback, port_nb);; *)
 
 let get_my_addr () =
   (gethostbyname(gethostname())).h_addr_list.(0)
+;;
+
+let rec read_from_channel c_in =
+  try
+    from_channel c_in
+  with
+  |End_of_file -> read_from_channel c_in
 ;;
 
 module Kahn: S = struct
@@ -44,9 +52,9 @@ module Kahn: S = struct
       |None -> raise No_Channel
       |Some(parent) ->
         let (c_in, c_out) = open_connection parent in
-        output_value c_out "PUT";
-        output_value c_out c;
-        output_value c_out v;
+        to_channel c_out "PUT" [];
+        to_channel c_out c [];
+        to_channel c_out v [];
         flush c_out
     end
   ;;
@@ -61,8 +69,8 @@ module Kahn: S = struct
       |None -> raise No_Channel
       |Some(parent) ->
         let (c_in, c_out) = open_connection parent in
-        output_value c_out "GET";
-        output_value c_out c;
+        to_channel c_out "GET" [];
+        to_channel c_out c [];
         flush c_out;
         let rec wait_answer () =
           let (mess : string) = input_value c_in in
@@ -106,8 +114,8 @@ module Kahn: S = struct
         |[] -> out
         |h::t ->
           let (c_in, c_out) = open_connection addr in
-          output_value c_out "INIT";
-          output_value c_out h;
+          to_channel c_out "INIT" [];
+          to_channel c_out h [Marshal.Closures];
           flush c_out;
           Queue.push (c_in, c_out) out;
           distrib t addr_l (addr::buff_l) out
@@ -132,8 +140,8 @@ module Kahn: S = struct
         |"GET" -> begin
           let c = input_value c_in in
           let v = get c () in
-          output_value c_out "GET_ANSWER";
-          output_value c_out v
+          to_channel c_out "GET_ANSWER" [];
+          to_channel c_out v []
         end
         |_ -> Queue.push (c_in, c_out) chann_l);
         wait_all chann_l
@@ -161,14 +169,21 @@ module Kahn: S = struct
     match !parent with
     |Some addr -> e ()
     |None ->
-      let (c_in, c_out) = open_connection (ADDR_INET(inet_addr_loopback, port_nb)) in
-      output_value c_out "INIT";
-      output_value c_out e;
+      print_endline "Tentative de connection";
+      let (c_in, c_out) = open_connection (ADDR_INET(get_my_addr (), port_nb)) in
+      print_endline "Connection reussi !";
+      to_channel c_out "INIT" [Closures];
       flush c_out;
+      print_endline "Envoie de INIT !";
+      to_channel c_out e [No_sharing ; Closures ; Compat_32];
+      flush c_out;
+      print_endline "Envoie du proc";
+      
+      print_endline "flush, depart des paquets";
       let rec wait_answer () =
-        let (mess : string) = input_value c_in in
+        let (mess : string) = read_from_channel c_in in
         match mess with
-        |"TERMINE" -> input_value c_in
+        |"TERMINE" -> read_from_channel c_in
         |_ -> wait_answer ()
       in
       wait_answer ()
