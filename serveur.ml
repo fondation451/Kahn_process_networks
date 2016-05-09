@@ -46,7 +46,7 @@ let _ =
   Arg.parse [] (set_file input_file) usage;
   
   if !input_file <> "" then
-    Network.addr_l := make_addr_l file;
+    Network.addr_l := make_addr_l !input_file;
   
   server ()
 ;;
