@@ -7,7 +7,7 @@ open Marshal;;
 exception No_Channel;;
 
 let addr_l = ref [];;
-let port_nb = 5555;;
+let port_nb = 2512;;
 let parent = ref None;; (* ADDR_INET(inet_addr_loopback, port_nb);; *)
 
 let is_serveur = ref false;;
