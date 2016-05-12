@@ -169,7 +169,7 @@ module Kahn: S = struct
         |[] -> out
         |h::t ->
           print_endline "ouverture connexion !!!";
-          (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a)) addr;
+          (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a); printf "port : %d \n" p) addr;
           let (c_in, c_out) = open_connection addr in
           to_channel c_out "INIT" [];
           print_endline "envoie init !!!";
@@ -266,7 +266,7 @@ let make_addr_l file =
   let chann = open_in file in
   let addr_l = aux chann [] in
   close_in chann;
-  addr_l
+  (* List.rev *) addr_l
 ;;
 
 let server p =
