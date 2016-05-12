@@ -94,6 +94,7 @@ module Kahn: S = struct
   ;;
 
   let put v c () =
+    print_endline "put !!!";
     try
       let (c_in, c_out) = List.assoc c !pipe in
       output_value c_out v
@@ -111,6 +112,7 @@ module Kahn: S = struct
   ;;
 
   let rec get c () =
+    print_endline "get !!!";
     try
       let (c_in, c_out) = List.assoc c !pipe in
       input_value c_in
@@ -135,6 +137,7 @@ module Kahn: S = struct
   ;;
   
   let doco_fork l () =
+    print_endline "doco fork !!!";
     let rec distrib l =
       match l with
       |[] -> 1
@@ -157,6 +160,7 @@ module Kahn: S = struct
   ;;
 
   let rec doco_network l () =
+    print_endline "doco network !!!";
     let rec distrib l addr_l buff_l out =
       match addr_l with
       |[] -> distrib l buff_l addr_l out
@@ -164,9 +168,13 @@ module Kahn: S = struct
         match l with
         |[] -> out
         |h::t ->
+          print_endline "ouverture connexion !!!";
+          (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a)) addr;
           let (c_in, c_out) = open_connection addr in
           to_channel c_out "INIT" [];
+          print_endline "envoie init !!!";
           to_channel c_out h [Marshal.Closures];
+          print_endline "envoie fonction !!!";
           flush c_out;
           Queue.push (c_in, c_out) out;
           distrib t addr_l (addr::buff_l) out
@@ -203,6 +211,7 @@ module Kahn: S = struct
   ;;
   
   let doco l () =
+    print_endline "doco !!!";
     if !addr_l = [] then
       doco_fork l ()
     else
@@ -261,7 +270,8 @@ let make_addr_l file =
 ;;
 
 let server p =
-  if !is_serveur then
+  if !is_serveur then begin
+    print_endline "etablissement du serveur !";
     let addr = get_my_addr () in
     let rec exec_proc c_in c_out =
       print_endline "Connection etabli !";
@@ -281,8 +291,11 @@ let server p =
       end
     in
     establish_server exec_proc (ADDR_INET(addr, port_nb))
-  else
+  end
+  else begin
+    print_endline "run !!!";
     Kahn.run p
+  end
 ;;
 
 (*****)
