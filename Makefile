@@ -1,13 +1,16 @@
 OCAMLBUILD=ocamlbuild -classic-display \
 		-tags annot,debug,thread \
 		-libs unix
-TARGET=native
+TARGET=byte
 
 example:
 	$(OCAMLBUILD) example.$(TARGET)
 
 serveur:
 	$(OCAMLBUILD) serveur.$(TARGET)
+
+network:
+	$(OCAMLBUILD) network.$(TARGET)
 
 clean:
 	$(OCAMLBUILD) -clean

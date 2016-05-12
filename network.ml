@@ -1,6 +1,6 @@
 (* Module de Reseau de Kahn sur le reseau *)
 
-open Kahn;;
+open Printf;;
 open Unix;;
 open Marshal;;
 
@@ -9,6 +9,8 @@ exception No_Channel;;
 let addr_l = ref [];;
 let port_nb = 5555;;
 let parent = ref None;; (* ADDR_INET(inet_addr_loopback, port_nb);; *)
+
+let is_serveur = ref false;;
 
 let get_my_addr () =
   (gethostbyname(gethostname())).h_addr_list.(0)
@@ -20,6 +22,55 @@ let rec read_from_channel c_in =
   with
   |End_of_file -> read_from_channel c_in
 ;;
+
+(* Reseau de Kahn *)
+
+module type S = sig
+  type 'a process
+  type 'a in_port
+  type 'a out_port
+
+  val new_channel: unit -> 'a in_port * 'a out_port
+  val put: 'a -> 'a out_port -> unit process
+  val get: 'a in_port -> 'a process
+
+  val doco: unit process list -> unit process
+
+  val return: 'a -> 'a process
+  val bind: 'a process -> ('a -> 'b process) -> 'b process
+
+  val run: 'a process -> 'a
+end
+
+module Lib (K : S) = struct
+
+  let ( >>= ) x f = K.bind x f
+
+  let delay f x =
+    K.bind (K.return ()) (fun () -> K.return (f x))
+
+  let par_map f l =
+    let rec build_workers l (ports, workers) =
+      match l with
+      | [] -> (ports, workers)
+      | x :: l ->
+          let qi, qo = K.new_channel () in
+          build_workers
+            l
+            (qi :: ports,
+             ((delay f x) >>= (fun v -> K.put v qo)) :: workers)
+    in
+    let ports, workers = build_workers l ([], []) in
+    let rec collect l acc qo =
+      match l with
+      | [] -> K.put acc qo
+      | qi :: l -> (K.get qi) >>= (fun v -> collect l (v :: acc) qo)
+    in
+    let qi, qo = K.new_channel () in
+    K.run
+      ((K.doco ((collect ports [] qo) :: workers)) >>= (fun _ -> K.get qi))
+
+end
 
 module Kahn: S = struct
   type 'a process = (unit -> 'a);;
@@ -166,7 +217,8 @@ module Kahn: S = struct
   ;;
   
   let run e =
-    match !parent with
+    e ()
+    (* match !parent with
     |Some addr -> e ()
     |None ->
       print_endline "Tentative de connection";
@@ -178,7 +230,7 @@ module Kahn: S = struct
       to_channel c_out e [No_sharing ; Closures ; Compat_32];
       flush c_out;
       print_endline "Envoie du proc";
-      
+
       print_endline "flush, depart des paquets";
       let rec wait_answer () =
         let (mess : string) = read_from_channel c_in in
@@ -186,9 +238,103 @@ module Kahn: S = struct
         |"TERMINE" -> read_from_channel c_in
         |_ -> wait_answer ()
       in
-      wait_answer ()
+      wait_answer () *)
   ;;
 end
+
+(*****)
+
+(* Serveur d'execution *)
+
+let make_addr_l file =
+  let rec aux chann out =
+    try
+      let addr = ADDR_INET(inet_addr_of_string (input_line chann), port_nb) in
+      aux chann (addr::out)
+    with
+    |End_of_file -> out
+  in
+  let chann = open_in file in
+  let addr_l = aux chann [] in
+  close_in chann;
+  addr_l
+;;
+
+let server p =
+  if !is_serveur then
+    let addr = get_my_addr () in
+    let rec exec_proc c_in c_out =
+      print_endline "Connection etabli !";
+      parent := Some(getsockname (descr_of_in_channel c_in));
+      print_endline "parent initailise !";
+      let (init : string) = read_from_channel c_in in
+      print_endline "recuperation du message d initialisation !";
+      if init <> "INIT" then
+        exec_proc c_in c_out
+      else begin
+        printf "%s" init; print_endline "";
+        let proc = read_from_channel c_in in
+        print_endline "proc recupere !!!";
+        let v = Kahn.run proc in
+        output_value c_out "TERMINE";
+        output_value c_out v
+      end
+    in
+    establish_server exec_proc (ADDR_INET(addr, port_nb))
+  else
+    Kahn.run p
+;;
+
+(*****)
+
+(* Processus Test *)
+
+module Example (K : S) = struct
+  module K = K
+  module Lib = Lib(K)
+  open Lib
+
+  let integers (qo : int K.out_port) : unit K.process =
+    let rec loop n =
+      (K.put n qo) >>= (fun () -> loop (n + 1))
+    in
+    loop 2
+
+  let output (qi : int K.in_port) : unit K.process =
+    let rec loop () =
+      (K.get qi) >>= (fun v -> Format.printf "l%d@." v; print_endline ""; loop ())
+    in
+    loop ()
+
+  let main : unit K.process =
+    (delay K.new_channel ()) >>=
+    (fun (q_in, q_out) -> K.doco [ integers q_out ; output q_in ; ])
+
+end
+
+module E = Example(Kahn)
+
+(*****)
+
+let input_file = ref "";;
+
+let speclist = [("-s", Arg.Set is_serveur, "Enables serveur mode")];;
+
+let usage = "usage: serveur addr.txt [-s]";;
+
+let set_file f s = f := s;;
+
+let _ =
+  Arg.parse speclist (set_file input_file) usage;
+  
+  if !input_file <> "" then
+    addr_l := make_addr_l !input_file;
+
+  List.iter (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a)) !addr_l;
+  
+  server E.main
+;;
+
 
 
 
