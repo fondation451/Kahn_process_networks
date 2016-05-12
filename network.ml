@@ -266,7 +266,7 @@ let make_addr_l file =
   let chann = open_in file in
   let addr_l = aux chann [] in
   close_in chann;
-  (* List.rev *) addr_l
+  List.rev addr_l
 ;;
 
 let server p =
