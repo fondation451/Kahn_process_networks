@@ -10,7 +10,15 @@ let addr_l = ref [];;
 let port_nb = 2512;;
 let parent = ref None;; (* ADDR_INET(inet_addr_loopback, port_nb);; *)
 
+let id_channel = ref 0;;
+let pipe = ref [];;
+
 let is_serveur = ref false;;
+
+let create_pipe () =
+  let in_pipe, out_pipe = Unix.pipe () in
+  (Unix.in_channel_of_descr in_pipe), (Unix.out_channel_of_descr out_pipe)
+;;
 
 let get_my_addr () =
   (gethostbyname(gethostname())).h_addr_list.(0)
@@ -21,6 +29,16 @@ let rec read_from_channel c_in =
     from_channel c_in
   with
   |End_of_file -> read_from_channel c_in
+;;
+
+let rec output_funcion c_out f =
+  let pipe_save = !pipe in
+  let parent_save = !parent in
+  pipe := [];
+  parent := Some(ADDR_INET(get_my_addr (), port_nb));
+  to_channel c_out f [Marshal.Closures];
+  pipe := pipe_save;
+  parent := parent_save
 ;;
 
 (* Reseau de Kahn *)
@@ -77,14 +95,6 @@ module Kahn: S = struct
   type 'a in_port = string;;
   type 'a out_port = string;;
 
-  let id_channel = ref 0;;
-  let pipe = ref [];;
-  
-  let create_pipe () =
-    let in_pipe, out_pipe = Unix.pipe () in
-    (Unix.in_channel_of_descr in_pipe), (Unix.out_channel_of_descr out_pipe)
-  ;;
-
   let new_channel () =
     let c = (gethostname ()) ^ (string_of_int !id_channel) in
     let (c_in, c_out) = create_pipe () in
@@ -101,9 +111,9 @@ module Kahn: S = struct
     with
     |Not_found -> begin
       match !parent with
-      |None -> raise No_Channel
-      |Some(parent) ->
-        let (c_in, c_out) = open_connection parent in
+      |None -> if !parent = None then print_endline "Pas de parent !!!"; raise No_Channel
+      |Some(addr) ->
+        let (c_in, c_out) = open_connection addr in
         to_channel c_out "PUT" [];
         to_channel c_out c [];
         to_channel c_out v [];
@@ -120,8 +130,8 @@ module Kahn: S = struct
     |Not_found -> begin
       match !parent with
       |None -> raise No_Channel
-      |Some(parent) ->
-        let (c_in, c_out) = open_connection parent in
+      |Some(addr) ->
+        let (c_in, c_out) = open_connection addr in
         to_channel c_out "GET" [];
         to_channel c_out c [];
         flush c_out;
@@ -173,7 +183,7 @@ module Kahn: S = struct
           let (c_in, c_out) = open_connection addr in
           to_channel c_out "INIT" [];
           print_endline "envoie init !!!";
-          to_channel c_out h [Marshal.Closures];
+          output_funcion c_out h;
           print_endline "envoie fonction !!!";
           flush c_out;
           Queue.push (c_in, c_out) out;
@@ -221,11 +231,24 @@ module Kahn: S = struct
   let return v = (fun () -> v);;
 
   let bind e e' () =
+    print_endline "bind !!!";
+    if !parent <> None then begin
+    let Some(a) = !parent in
+    print_endline "parent &&&&&&& !!!";
+    (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a); printf "port : %d \n" p) a; 
+    print_endline "parent &&&&&&& !!!";
+    end;
     let v = e () in
     e' v ()
   ;;
   
   let run e =
+    if !parent <> None then begin
+    let Some(a) = !parent in
+    print_endline "parent &&&&&&& !!!";
+    (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a); printf "port : %d \n" p) a; 
+    print_endline "parent &&&&&&& !!!";
+    end;
     e ()
     (* match !parent with
     |Some addr -> e ()
@@ -276,6 +299,8 @@ let server p =
     let rec exec_proc c_in c_out =
       print_endline "Connection etabli !";
       parent := Some(getsockname (descr_of_in_channel c_in));
+      (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a); printf "port : %d \n" p) (getsockname (descr_of_in_channel c_in));
+      if !parent <> None then print_endline "Parent different de none !";
       print_endline "parent initailise !";
       let (init : string) = read_from_channel c_in in
       print_endline "recuperation du message d initialisation !";
