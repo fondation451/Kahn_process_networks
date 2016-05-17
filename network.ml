@@ -341,7 +341,7 @@ let rec request_manager () =
     let rec distrib_and_wait l addr_l buff_l l_pid =
       match addr_l with
       |[] -> distrib_and_wait l buff_l addr_l l_pid
-      |addr::addr_l -> begin
+      |addr::tail_addr -> begin
         match l with
         |[] -> begin
           match Unix.fork () with
@@ -363,7 +363,7 @@ let rec request_manager () =
             flush c_out;
             close_connection c_in c_out;
             exit 0
-          |pid -> distrib_and_wait t addr_l (addr::buff_l) (pid::l_pid)
+          |pid -> distrib_and_wait t tail_addr (addr::buff_l) (pid::l_pid)
         end
       end
     in
