@@ -29,7 +29,7 @@ let local_addr = ref (ADDR_INET(get_my_addr (), port_nb));;
 let id_channel = ref 0;;
 let pipe = ref [];;
 
-let bus = ref (Some(create_pipe ()));;
+let bus = ref [create_pipe ()];;
 let id = ref 0;;
 (* let id = ref ((gethostname ()) ^ (string_of_int !id_compt));; *)
 
@@ -80,7 +80,7 @@ let rec output_funcion c_out f =
   let pipe_save = !pipe in
   let net_pipe_save = !net_pipe in
   let bus_save = !bus in
-  bus := None;
+  bus := [];
   net_pipe := None;
   pipe := [];
   to_channel c_out f [Marshal.Closures];
@@ -275,7 +275,7 @@ let new_id () =
 
 let rec request_manager () =
   let Some(network_in, network_out) = !net_pipe in
-  let Some(bus_in, bus_out) = !bus in
+  let (bus_in, bus_out) = List.hd !bus in
   printf "                                                                                   boulce"; print_endline "";
   let (request : string) = read_from_channel network_in in
   printf "                                                                                   boulce"; print_endline "";
