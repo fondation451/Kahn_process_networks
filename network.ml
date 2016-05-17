@@ -24,7 +24,7 @@ let net_pipe = ref (Some(create_pipe ()));;
 
 let addr_l = ref [];;
 let port_nb = 2529;;
-let local_addr = ADDR_INET(get_my_addr (), port_nb);;
+let local_addr = ref (ADDR_INET(get_my_addr (), port_nb));;
 
 let id_channel = ref 0;;
 let pipe = ref [];;
@@ -150,10 +150,10 @@ module Kahn: S = struct
 
   let new_channel () =
     printf "new_channel %d !!!" (getpid ()); print_endline "";
-    let (c_in, c_out) = open_connection local_addr in
+    let (c_in, c_out) = open_connection !local_addr in
     to_channel c_out "NEW_CHANNEL" [];
     to_channel c_out (getpid ()) [];
-    to_channel c_out local_addr [];
+    to_channel c_out !local_addr [];
     flush c_out;
     close_connection c_in c_out;
     raise Exit
@@ -165,7 +165,7 @@ module Kahn: S = struct
     let (c_in, c_out) = open_connection addr_c in
     to_channel c_out "PUT" [];
     to_channel c_out (getpid ()) [];
-    to_channel c_out local_addr [];
+    to_channel c_out !local_addr [];
     to_channel c_out id_c [];
     to_channel c_out v [];
     flush c_out;
@@ -179,7 +179,7 @@ module Kahn: S = struct
     let (c_in, c_out) = open_connection addr_c in
     to_channel c_out "GET" [];
     to_channel c_out (getpid ()) [];
-    to_channel c_out local_addr [];
+    to_channel c_out !local_addr [];
     to_channel c_out id_c [];
     flush c_out;
     close_connection c_in c_out;
@@ -193,10 +193,10 @@ module Kahn: S = struct
       |[] -> ()
       |h::t -> output_funcion c_out h; aux t c_out
     in
-    let (c_in, c_out) = open_connection local_addr in
+    let (c_in, c_out) = open_connection !local_addr in
     to_channel c_out "DOCO" [];
     to_channel c_out (getpid ()) [];
-    to_channel c_out local_addr [];
+    to_channel c_out !local_addr [];
     to_channel c_out (List.length l) [];
     aux l c_out;
     flush c_out;
@@ -208,10 +208,10 @@ module Kahn: S = struct
 
   let bind e e' () =
     printf "bind %d !!!" (getpid ()); print_endline "";
-    let (c_in, c_out) = open_connection local_addr in
+    let (c_in, c_out) = open_connection !local_addr in
     to_channel c_out "BIND" [];
     to_channel c_out (getpid ()) [];
-    to_channel c_out local_addr [];
+    to_channel c_out !local_addr [];
     output_funcion c_out e;
     output_funcion c_out e';
     flush c_out;
@@ -305,7 +305,7 @@ let rec request_manager () =
     let (pipe_in, pipe_out) = create_pipe () in
     pipe := (c, (pipe_in, pipe_out))::(!pipe);
     id_channel := !id_channel + 1;
-    termine_request from_addr ((c, local_addr), (c, local_addr)) id_out;
+    termine_request from_addr ((c, !local_addr), (c, !local_addr)) id_out;
     request_manager ()
   end
   |"PUT" -> begin
@@ -358,7 +358,7 @@ let rec request_manager () =
             let (c_in, c_out) = open_connection addr in
             to_channel c_out "FORK" [];
             to_channel c_out (getpid ()) [];
-            to_channel c_out local_addr [];
+            to_channel c_out !local_addr [];
             output_funcion c_out h;
             flush c_out;
             (* close_connection c_in c_out; *)
@@ -462,7 +462,7 @@ let network_buffer () =
       output_value network_out "REMOVE_PIPE";
       output_value network_out pipe_id;
   in
-  establish_server aux local_addr
+  establish_server aux !local_addr
 ;;
 
 let serveur () =
@@ -513,20 +513,23 @@ let set_file f s = f := s;;
 let _ =
   Arg.parse speclist (set_file input_file) usage;
   
-  if !input_file <> "" then
-    addr_l := make_addr_l !input_file
+  if !input_file <> "" then begin
+    let tmp = make_addr_l !input_file in
+    local_addr := List.hd tmp;
+    addr_l := List.tl tmp
+  end
   else
-    addr_l := [local_addr];
+    print_endline "Fichier d'adresse manquant !";
 
   List.iter (fun x -> let ADDR_INET(a, p) = x in print_endline (string_of_inet_addr a)) !addr_l;
   
   if !is_serveur then
     serveur ()
   else begin
-    let (c_in, c_out) = open_connection local_addr in
+    let (c_in, c_out) = open_connection !local_addr in
     to_channel c_out "FORK" [];
     to_channel c_out (getpid ()) [];
-    to_channel c_out local_addr [];
+    to_channel c_out !local_addr [];
     output_funcion c_out E.main;
     flush c_out;
     close_connection c_in c_out
