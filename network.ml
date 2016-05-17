@@ -361,7 +361,7 @@ let rec request_manager () =
             to_channel c_out local_addr [];
             output_funcion c_out h;
             flush c_out;
-            close_connection c_in c_out;
+            (* close_connection c_in c_out; *)
             exit 0
           |pid -> distrib_and_wait t tail_addr (addr::buff_l) (pid::l_pid)
         end
