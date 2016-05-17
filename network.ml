@@ -235,7 +235,7 @@ let make_addr_l file =
     |End_of_file -> out
   in
   let chann = open_in file in
-  let addr_l = aux chann [local_addr] in
+  let addr_l = aux chann [] in
   close_in chann;
   List.rev addr_l
 ;;
