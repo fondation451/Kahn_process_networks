@@ -13,7 +13,7 @@ let create_pipe () =
 ;;
 
 let net_pipe = ref [create_pipe ()];;
-let port_nb = 2662;;
+let port_nb = 2665;;
 let addr_file = "addr.txt";;
 let id_channel = ref 0;;
 let pipe = ref [];;
@@ -34,7 +34,7 @@ let make_addr_l file =
   let chann = open_in file in
   let addr_l = aux chann [(get_my_addr ())] in
   close_in chann;
-  addr_l
+  List.rev addr_l
 ;;
 
 let addr_to_string addr =
@@ -245,7 +245,7 @@ let rec request_manager () =
       mkfifo ("FIFO/" ^ (gethostname ()) ^ (string_of_int (getpid ()))) 0o640;
       let v = try Kahn.run proc with Exit -> read_from_bus (getpid ()) in
       termine_request from_addr v id_out;
-      exit 0;
+      exit 0
     |pid -> request_manager ()
   end
   |"NEW_CHANNEL" -> begin
@@ -266,13 +266,25 @@ let rec request_manager () =
     printf "Recherche de %s" id_c; print_endline "";
     let (compt, (pipe_in, pipe_out)) = List.assoc id_c !pipe in
     printf "%s trouve, taille %d !" id_c !compt; print_endline "";
-    output_value pipe_out v;
-    printf "bon"; print_endline "";
-    flush pipe_out;
+    if !compt < 2000 then begin
+      output_value pipe_out v;
+      printf "bon"; print_endline "";
+      flush pipe_out;
+      compt := !compt + 1;
+      termine_request from_addr () id_out
+    end
+    else begin
+      let (c_in, c_out) = open_connection (get_my_addr ()) in
+      output_value c_out "PUT";
+      output_value c_out id_out;
+      output_value c_out from_addr;
+      output_value c_out id_c;
+      output_value c_out v;
+      flush c_out;
+      close_connection c_in
+    end;
     printf "c'est pas cool"; print_endline "";
-    compt := !compt + 1;
     printf "presque"; print_endline "";
-    termine_request from_addr () id_out;
     printf "normale je suis lz"; print_endline "";
     request_manager ()
   end
