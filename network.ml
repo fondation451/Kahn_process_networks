@@ -19,8 +19,7 @@ let create_pipe () =
   (Unix.in_channel_of_descr in_pipe), (Unix.out_channel_of_descr out_pipe)
 ;;
 
-(* let (network_in, network_out) = create_pipe ();; *)
-let net_pipe = ref (Some(create_pipe ()));;
+let net_pipe = ref [create_pipe ()];;
 
 let addr_l = ref [];;
 let port_nb = 2529;;
@@ -81,7 +80,7 @@ let rec output_funcion c_out f =
   let net_pipe_save = !net_pipe in
   let bus_save = !bus in
   bus := [];
-  net_pipe := None;
+  net_pipe := [];
   pipe := [];
   to_channel c_out f [Marshal.Closures];
   pipe := pipe_save;
@@ -274,7 +273,7 @@ let new_id () =
 ;;
 
 let rec request_manager () =
-  let Some(network_in, network_out) = !net_pipe in
+  let (network_in, network_out) = List.hd !net_pipe in
   let (bus_in, bus_out) = List.hd !bus in
   printf "                                                                                   boulce"; print_endline "";
   let (request : string) = read_from_channel network_in in
@@ -390,7 +389,7 @@ let rec request_manager () =
 ;;
 
 let network_buffer () =
-  let Some(network_in, network_out) = !net_pipe in
+  let (network_in, network_out) = List.hd !net_pipe in
   let rec aux c_in c_out =
     printf "NETWORK BUFFER :::: Connexcion entrante %s !!!" (addr_to_string (getsockname (descr_of_in_channel c_in))); print_endline "";
     let (request : string) = read_from_channel c_in in
