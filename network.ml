@@ -29,7 +29,7 @@ let local_addr = ref (ADDR_INET(get_my_addr (), port_nb));;
 let id_channel = ref 0;;
 let pipe = ref [];;
 
-let bus_in, bus_out = create_pipe ();;
+let bus = ref (Some(create_pipe ()));;
 let id = ref 0;;
 (* let id = ref ((gethostname ()) ^ (string_of_int !id_compt));; *)
 
@@ -62,7 +62,7 @@ let rec read_from_channel c_in =
   |End_of_file -> read_from_channel c_in
 ;;
 
-let rec read_from_bus pid =
+let rec read_from_bus pid bus_in bus_out =
   try
     (* printf "Lecture bus %d (processus %d)" pid (getpid ()); print_endline ""; *)
     let (id, v) = input_value bus_in in
@@ -71,19 +71,22 @@ let rec read_from_bus pid =
       v
     end
     else
-      begin (* printf "Mauvaise lecture pid = %d != %d" pid id; print_endline ""; *) output_value bus_out (id, v); flush bus_out; sleep 1; read_from_bus pid end
+      begin (* printf "Mauvaise lecture pid = %d != %d" pid id; print_endline ""; *) output_value bus_out (id, v); flush bus_out; sleep 1; read_from_bus pid bus_in bus_out end
   with
-  |End_of_file -> read_from_bus pid
+  |End_of_file -> read_from_bus pid bus_in bus_out
 ;;
 
 let rec output_funcion c_out f =
   let pipe_save = !pipe in
   let net_pipe_save = !net_pipe in
+  let bus_save = !bus in
+  bus := None;
   net_pipe := None;
   pipe := [];
   to_channel c_out f [Marshal.Closures];
   pipe := pipe_save;
-  net_pipe := net_pipe_save
+  net_pipe := net_pipe_save;
+  bus := bus_save
 ;;
 
 let rec wait_answer code c_in =
@@ -272,6 +275,7 @@ let new_id () =
 
 let rec request_manager () =
   let Some(network_in, network_out) = !net_pipe in
+  let Some(bus_in, bus_out) = !bus in
   printf "                                                                                   boulce"; print_endline "";
   let (request : string) = read_from_channel network_in in
   printf "                                                                                   boulce"; print_endline "";
@@ -282,7 +286,7 @@ let rec request_manager () =
     printf "REQUETE FORK : id_out = %d | from_addr = %s" id_out (addr_to_string from_addr); print_endline "";
     match Unix.fork () with
     |0 ->
-      let v = try Kahn.run proc with Exit -> read_from_bus (getpid ()) in
+      let v = try Kahn.run proc with Exit -> read_from_bus (getpid ()) bus_in bus_out in
       termine_request from_addr v id_out
     |pid -> request_manager ()
   end
@@ -293,8 +297,8 @@ let rec request_manager () =
     printf "REQUETE BIND : id_out = %d" id_out; print_endline "";
     match Unix.fork () with
     |0 ->
-      let fst_v = try Kahn.run fst_proc with Exit -> read_from_bus (getpid ()) in
-      let snd_v = try Kahn.run (snd_proc fst_v) with Exit -> read_from_bus (getpid ()) in
+      let fst_v = try Kahn.run fst_proc with Exit -> read_from_bus (getpid ()) bus_in bus_out in
+      let snd_v = try Kahn.run (snd_proc fst_v) with Exit -> read_from_bus (getpid ()) bus_in bus_out in
       termine_request from_addr snd_v id_out;
     |pid -> request_manager ()
   end
@@ -347,7 +351,7 @@ let rec request_manager () =
           match Unix.fork () with
           |0 ->
             print_endline "doco ca degage pas encore !";
-            List.iter (fun pid -> read_from_bus pid) l_pid;
+            List.iter (fun pid -> read_from_bus pid bus_in bus_out) l_pid;
             print_endline "doco ca degage !";
             termine_request from_addr () id_out
           |pid -> request_manager ()
