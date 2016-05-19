@@ -13,7 +13,7 @@ let create_pipe () =
 ;;
 
 let net_pipe = ref [create_pipe ()];;
-let port_nb = 2665;;
+let port_nb = 2671;;
 let addr_file = "addr.txt";;
 let id_channel = ref 0;;
 let pipe = ref [];;
@@ -139,7 +139,7 @@ module Kahn: S = struct
   type 'a out_port = string * sockaddr;;
 
   let new_channel () =
-    printf "new_channel %d !!!" (getpid ()); print_endline "";
+    (* printf "new_channel %d !!!" (getpid ()); print_endline ""; *)
     let (c_in, c_out) = open_connection (get_my_addr ()) in
     output_value c_out "NEW_CHANNEL";
     output_value c_out (getpid ());
@@ -150,7 +150,7 @@ module Kahn: S = struct
   ;;
 
   let put v c () =
-    printf "put %d !!!" (getpid ()); print_endline "";
+    (* printf "put %d !!!" (getpid ()); print_endline ""; *)
     let (id_c, addr_c) = c in
     let (c_in, c_out) = open_connection addr_c in
     output_value c_out "PUT";
@@ -164,7 +164,7 @@ module Kahn: S = struct
   ;;
 
   let rec get c () =
-    printf "get %d !!!" (getpid ()); print_endline "";
+    (* printf "get %d !!!" (getpid ()); print_endline ""; *)
     let (id_c, addr_c) = c in
     let (c_in, c_out) = open_connection addr_c in
     output_value c_out "GET";
@@ -240,18 +240,19 @@ let read_request_header c_in =
 
 let rec request_manager () =
   let (network_in, network_out) = List.hd !net_pipe in
-  printf "                                                                                   boulce"; print_endline "";
+  (* printf "                                                                                   boulce"; print_endline ""; *)
   let (request : string) = read_from_channel network_in in
-  printf "                                                                                   boulce"; print_endline "";
+  (* printf "                                                                                   boulce"; print_endline ""; *)
   match request with
   |"FORK" -> begin
     let id_out, from_addr = read_request_header network_in in
     let proc = read_from_channel network_in in
-    printf "REQUETE FORK : id_out = %d | from_addr = %s" id_out (addr_to_string from_addr); print_endline "";
+    (* printf "REQUETE FORK : id_out = %d | from_addr = %s" id_out (addr_to_string from_addr); print_endline ""; *)
     match Unix.fork () with
     |0 -> begin
       match Unix.fork () with
       |0 ->
+        (* printf "JUSTE AVANT"; print_endline ""; *)
         (* dup2 (descr_of_out_channel network_out) stdout; *)
         mkfifo ("FIFO/" ^ (gethostname ()) ^ (string_of_int (getpid ()))) 0o640;
         let v = try Kahn.run proc with Exit -> read_from_bus (getpid ()) in
@@ -264,7 +265,7 @@ let rec request_manager () =
   |"NEW_CHANNEL" -> begin
     let id_out, from_addr = read_request_header network_in in
     let c = (gethostname ()) ^ (string_of_int !id_channel) in
-    printf "REQUETE NEW_CHANNEL : proc_id = %d | nb_c = %d | channel = %s" id_out !id_channel c; print_endline "";
+    (* printf "REQUETE NEW_CHANNEL : proc_id = %d | nb_c = %d | channel = %s" id_out !id_channel c; print_endline ""; *)
     let (pipe_in, pipe_out) = create_pipe () in
     pipe := (c, (ref 0, (pipe_in, pipe_out)))::(!pipe);
     id_channel := !id_channel + 1;
@@ -275,13 +276,13 @@ let rec request_manager () =
     let id_out, from_addr = read_request_header network_in in
     let id_c = read_from_channel network_in in
     let v = read_from_channel network_in in
-    printf "REQUETE PUT : channel = %s| id_out = %d | from_addr = %s" id_c id_out (addr_to_string from_addr); print_endline "";
-    printf "Recherche de %s" id_c; print_endline "";
+    (* printf "REQUETE PUT : channel = %s| id_out = %d | from_addr = %s" id_c id_out (addr_to_string from_addr); print_endline "";
+    printf "Recherche de %s" id_c; print_endline ""; *)
     let (compt, (pipe_in, pipe_out)) = List.assoc id_c !pipe in
-    printf "%s trouve, taille %d !" id_c !compt; print_endline "";
+    (* printf "%s trouve, taille %d !" id_c !compt; print_endline ""; *)
     if !compt < 2000 then begin
       output_value pipe_out v;
-      printf "bon"; print_endline "";
+      (* printf "bon"; print_endline ""; *)
       flush pipe_out;
       compt := !compt + 1;
       termine_request network_out from_addr () id_out
@@ -294,18 +295,18 @@ let rec request_manager () =
       output_value network_out v;
       flush network_out;
     end;
-    printf "c'est pas cool"; print_endline "";
+    (* printf "c'est pas cool"; print_endline "";
     printf "presque"; print_endline "";
-    printf "normale je suis lz"; print_endline "";
+    printf "normale je suis lz"; print_endline ""; *)
     request_manager ()
   end
   |"GET" -> begin
     let id_out, from_addr = read_request_header network_in in
     let id_c = read_from_channel network_in in
-    printf "REQUETE GET : channel = %s | id_out = %d | from_addr = %s" id_c id_out (addr_to_string from_addr); print_endline "";
-    printf "Recherche de %s" id_c; print_endline "";
+    (* printf "REQUETE GET : channel = %s | id_out = %d | from_addr = %s" id_c id_out (addr_to_string from_addr); print_endline "";
+    printf "Recherche de %s" id_c; print_endline ""; *)
     let (compt, (pipe_in, pipe_out)) = List.assoc id_c !pipe in
-    printf "%s trouve, taille %d !" id_c !compt; print_endline "";
+    (* printf "%s trouve, taille %d !" id_c !compt; print_endline ""; *)
     if !compt > 0 then begin
       let v = read_from_channel pipe_in in
       compt := !compt - 1;
@@ -322,7 +323,7 @@ let rec request_manager () =
   |"TERMINE" -> begin
     let v = read_from_channel network_in in
     let id_out = read_from_channel network_in in
-    printf "REQUETE TERMINE : id_out = %d" id_out; print_endline "";
+    (* printf "REQUETE TERMINE : id_out = %d" id_out; print_endline ""; *)
     write_to_bus id_out v;
     request_manager ()
   end
@@ -332,9 +333,9 @@ let rec request_manager () =
 let network_buffer () =
   let (network_in, network_out) = List.hd !net_pipe in
   let rec aux c_in c_out =
-    printf "NETWORK BUFFER :::: Connexcion entrante %s !!!" (addr_to_string (getsockname (descr_of_in_channel c_in))); print_endline "";
+    (* printf "NETWORK BUFFER :::: Connexcion entrante %s !!!" (addr_to_string (getsockname (descr_of_in_channel c_in))); print_endline ""; *)
     let (request : string) = read_from_channel c_in in
-    printf "BUFFERISATION de %s" request; print_endline "";
+    (* printf "BUFFERISATION de %s" request; print_endline ""; *)
     (match request with
     |"FORK" ->      
       let id_out = read_from_channel c_in in
@@ -367,13 +368,13 @@ let network_buffer () =
       let id_out = read_from_channel c_in in
       let from_addr = read_from_channel c_in in
       let c = read_from_channel c_in in
-      printf "Lecture faite"; print_endline "";
+      (* printf "Lecture faite"; print_endline ""; *)
       output_value network_out "GET";
       output_value network_out id_out;
       output_value network_out from_addr;
       output_value network_out c;
       flush network_out;
-      printf "Envoi fait"; print_endline "";
+      (* printf "Envoi fait"; print_endline ""; *)
     |"TERMINE" ->
       let v = read_from_channel c_in in
       let id_out = read_from_channel c_in in
