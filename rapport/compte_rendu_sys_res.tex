@@ -1,0 +1,247 @@
+%% fichier sys_dig.tex
+%%%%%%%%%%%%%%%%
+
+\documentclass[a4paper, 12pt, twoside]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[francais]{babel}
+\usepackage{eurosym}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage[bookmarks=true, bookmarksnumbered=true, linkcolor={0 0 1}, linkbordercolor={1 1 1}, pdfborderstyle={/S/U/W 1}]{hyperref}
+\setcounter{tocdepth}{5}
+
+\makeatletter
+\renewcommand{\thesection}{\@arabic\c@section}
+\makeatother
+
+\usepackage{fancyhdr}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+
+\usepackage{enumerate}
+
+\usepackage{color}
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+
+\usepackage{listings}
+\lstset{ %
+  backgroundcolor=\color{white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\footnotesize,        % the size of the fonts that are used for the code
+  breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                 % sets automatic line breaking
+  captionpos=b,                    % sets the caption-position to bottom
+  commentstyle=\color{mygreen},    % comment style
+  extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=single,                    % adds a frame around the code
+  keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{blue},       % keyword style
+  language=C,                 % the language of the code
+  numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                   % how far the line-numbers are from the code
+  numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+  rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,          % underline spaces within strings only
+  showtabs=false,                  % show tabs within strings adding particular underscores
+  stepnumber=1,                    % the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{mymauve},     % string literal style
+  tabsize=2,                       % sets default tabsize to 2 spaces
+  title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+
+\usepackage[top=3cm, bottom=3cm, left=3cm, right=3cm]{geometry}
+
+\lhead{Nicolas ASSOUAD}
+\rhead{Réseaux de Kahn}
+\lfoot{Ecole Normale Supérieure}
+\rfoot{nicolas@assouad.com}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\pagestyle{fancy}
+
+\newtheorem{definition_complex_comm}{Définition}[section]
+\newtheorem{definition_rect}{Définition}[section]
+\newtheorem{lemme_rectangle}{Lemme}[section]
+\newtheorem{lemme_inferieur}{Lemme}[section]
+\newtheorem{lemme_fooling_set}{Lemme}[section]
+\newtheorem{lemme_rang}{Lemme}[section]
+\newtheorem{proposition}{Proposition}[section]
+
+\begin{document}
+%%%%%%%%%%%%%%%%
+
+\begin{titlepage}
+\begin{center}
+
+% Upper part of the page. The '~' is needed because \\
+% only works if a paragraph has started.
+\includegraphics[width=0.35\textwidth]{./ENS_Logo.png}~\\[1cm]
+
+\textsc{\Large Systèmes et Réseaux}\\[0.5cm]
+
+% Title
+\HRule \\[0.4cm{ \huge \bfseries Réseaux de Kahn\\[0.4cm]}]
+
+\HRule \\[1.5cm]
+\end{center}
+
+% Author and supervisor
+\begin{minipage}{0.4\textwidth}
+\begin{flushleft} \large
+\emph{Auteurs :}\\
+Nicolas ASSOUAD\\
+\end{flushleft}
+\end{minipage}
+
+\begin{center}
+\vfill
+% Bottom of the page
+{\large \today}
+
+\end{center}
+\end{titlepage}
+
+\newpage~
+\newpage~
+%%%%%%%%%%%%%%%%
+
+\section*{Introduction}
+
+Dans le cadre du cours "Systèmes et Réseaux" dirigé par 
+le professeur Marc Pouzet, nous avons été amenés à implémenter de différentes manières des réseaux de Kahn. 
+Un réseau de Kahn est un modèle d'exécution parallèle de processus déterministe. Ces réseaux sont déterministes, c'est 
+à dire que peut importe la manière dont il sera exécuté, le résultat sera toujours le même. Une autre caractéristique 
+des réseaux de Kahn est que le seul moyen de communication entre les processus sont des files de longueur 
+théorique infinie.\\
+
+Nous avons réalisé trois implémentations différentes de ces réseaux de Kahn : une séquentielle, une avec des processus, et 
+une en réseau.
+
+\section{Implémentation avec des processus}
+
+Nous avons réalisé une version avec des processus. Les channels sont représentées par des pipes. Le doco revient à 
+effectuer un certain nombre de fork pour exécuter les différentes fonctions en parallèle sur des processus fils.
+
+\section{Implémentations séquentielles}
+
+Nous avons réalisé une version à exécution séquentielle (parallélisme simulé). Toute l'idée de cette implémentation est de 
+savoir lors de l'exécution d'un doco comment jongler entre les exécutions des différentes fonctions en parallèle. Nous avons 
+eu deux approches dans cette implémentation.\\
+
+La première qui correspond au fichier "sequence.ml" prend le parti de changer de 
+fonction qui s'exécute seulement lors de get bloquant, c'est à dire de get vers une channel vide, ou lors d'un put, ce qui 
+correspond à une mise à jour d'une channel. Cette première approche n'est pas dénuée de sens, en effet, les changements 
+d'exécutions ne font que lorsqu'ils sont vraiment utiles : une fonction passe la main seulement lorsqu'elle est bloquée par un get, 
+ou lorsqu'elle a effectué un put qui peut favorable à l'exécution d'une autre fonction.\\
+
+La seconde approche qui correspond au fichier "sequence_ord.ml" prend un parti plus extrême : on n'exécute qu'un pas élémentaire 
+de chaque fonction à la fois. Cela se matérialise de le code dans la fonction bind : celle-ci ne calcule plus les deux fonctions 
+qu'elle possède en argument, mais seulement la première et "renvoie" la deuxième. Ainsi dans cette approche, 
+chaque fonction d'un doco avance de la même manière.\\
+
+Concrêtement dans les deux approches, les interruptions du calcul des fonctions est effectuées par des exceptions. Ces exceptions 
+contiennent la suite du calcul à effectuer, c'est à dire la continuation, ou bien dans le cas d'un get bloquant le même get réitéré. 
+Ces calculs sont gelés dans l'exception à l'intérieur d'une fonction prenant unit pour argument.
+
+\section{Implémentations en réseau}
+
+L'implémentation en réseau a été la plus périlleuse de toute. Notre but été le suivant : avoir une implémentation qui puisse 
+à la fois marcher sur un ordinateur local, sur plusieurs machines différentes comprenant ou non la machine ayant lancé le réseau 
+de Kahn.\\
+
+La grande difficulté rencontrée a tournée autour de la marshalisation. En effet, le comportement de la marshalisation en 
+présence de descripteur de fichier, notamment de pipe et de socket, n'est pas très bon. Aucun descripteur de fichier ne doit 
+être présent dans la portée de la fonction à marshaliser lors de la marshalisation (en cela, je pense particulièrement à des 
+variables globales qui auraient pu être bien pratique). Toute la difficulté de ce constat vient donc de l'impossibilité de 
+posséder un moyen de communication par pipe entre les fonctions marshalisées typiquement des get, des put, et des new_channel 
+et les autres composantes du programme.\\
+
+Cette difficulté exposée, passons à la strucure de notre solution. Notre implémentation repose sur des serveurs d'exécutions 
+qui seront présents sur les différentes machines qui effectueront les calculs. Ces serveurs sont composés de deux processus 
+principaux :
+\begin{itemize}
+  \item une entité chargée de récupérer tout ce qui arrive sur le port du serveur et de le rediriger vers un pipe local.
+        La fonction en charge de cette tâche est la fonction "network_buffer". Elle utilise la fonction de haut niveau 
+        establish_server qui fork un nouveau processus charger de la redirection pour chaque connexion entrante. 
+  \item une entité chargée d'interpréter les différentes requêtes. Il lit des informations sur le pipe local alimenté par le 
+        "network_buffer" et y répond de manière appropriée. La fonction en charge de cette tâche est la fonction "request_manager".
+        Chaque requête est composée du nom de la requête, d'une 
+        en tête contenant les informations d'identification de la requête qui sont l'identifiant du processus qui a 
+        envoyé la requête (son PID) et de l'adresse où il se trouve sur le réseau, et de données spécifique à la dite 
+        requête. Les différentes requêtes qui peuvent être rencontrées sont :
+        \begin{itemize}
+          \item "FORK", cette requête reçoit une fonction marshalisée et va la faire exécuter sur un processus fils. C'est ici 
+                qu'intervient la difficulté décrite au dessus : il nous faut un moyen de communication entre le processus 
+                nouvellement crée et le request_manager. Pour chaque processus, nous allons crée un pipe nommé. Son nom sera 
+                composé du nom de la machine et de son PID. Une autre particularité est que le request_manager s'arrête pas 
+                pour attendre son fils, il a d'autre requête à gérer. Nous avons donc mis en place la technique du double 
+                fork pour éviter tout processus zombie.
+          \item "NEW_CHANNEL", cette requête crée une nouvelle channel. Les channels comme dans l'implémentation procédurale
+                sont représentées par des pipes auxquels on ajoute un compteur qui garde en mémoire le nombre d'élements 
+                présent à l'intérieur du pipe.
+          \item "PUT", cette requête recoit l'identifiant de la channel et la valeur à y mettre. Il vérifie qu'il y a suffisament 
+                de place dans la channel grace au compteur, si c'est le cas il y incorpore la valeur, sinon il remet une requête 
+                PUT identique sur la pile des requêtes à gérer.
+          \item "GET", cette requête recoit l'identifiant de la channel dans laquelle il faut lire. Il vérifie qu'il y a bien 
+                des élements à lire (la lecture étant bloquante si le pipe est vide), si c'est le cas il les lit, sinon 
+                il remet une requête GET identique sur la pile des requêtes à gérer.
+          \item "TERMINE", cette requête ne prend pas d'en tête, mais seulement l'identifiant d'un processus et une valeur. 
+                Elle a pour rôle d'envoyer via le pipe nommé une valeur de retour au processus identifié par l'identifiant reçu.\\
+        \end{itemize}
+\end{itemize}
+
+Toute les requêtes exceptées la requête TERMINE se termine par l'envoie d'une requête TERMINE aux serveur indiqué par l'adresse 
+reçu dans l'en tête. L'identifiant passé est le même que celui présent dans l'en tête et la valeur dépend de la requête.\\
+
+Les fonctions du réseau de Kahn peuvent s'exécuter de deux manières différentes (cela se matérialise dans le code par le code 
+de la fonction bind, ou bien l'appel du processus dans la requête FORK) :
+\begin{itemize}
+  \item Soit la fonction se termine et renvoie une valeur, c'est le meilleur cas
+  \item Soit la fonction lève l'exception Exit comme typiquement dans les fonctions get, put, ou new_channel, alors 
+        le processus doit attendre la valeur de retour qui doit lui parvenir par le pipe nommé à son nom.\\
+\end{itemize}
+
+Le dernier point de compréhension de notre code sont les fonctions du réseau de Kahn. Les fonctions get, put et new_channel 
+n'effectuent que des connexions au serveur local pour envoyer la requête adéquate avec les bonnes informations.
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
