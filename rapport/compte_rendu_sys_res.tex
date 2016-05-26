@@ -62,7 +62,7 @@
 \lhead{Nicolas ASSOUAD}
 \rhead{Réseaux de Kahn}
 \lfoot{Ecole Normale Supérieure}
-\rfoot{nicolas@assouad.com}
+\rfoot{Ismail LAHKIM BENNANI}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0.4pt}
 
@@ -100,6 +100,7 @@
 \begin{flushleft} \large
 \emph{Auteurs :}\\
 Nicolas ASSOUAD\\
+Ismail LAHKIM BENNANI
 \end{flushleft}
 \end{minipage}
 
@@ -144,7 +145,7 @@ correspond à une mise à jour d'une channel. Cette première approche n'est pas
 d'exécutions ne font que lorsqu'ils sont vraiment utiles : une fonction passe la main seulement lorsqu'elle est bloquée par un get, 
 ou lorsqu'elle a effectué un put qui peut favorable à l'exécution d'une autre fonction.\\
 
-La seconde approche qui correspond au fichier "sequence_ord.ml" prend un parti plus extrême : on n'exécute qu'un pas élémentaire 
+La seconde approche qui correspond au fichier "sequence\_ord.ml" prend un parti plus extrême : on n'exécute qu'un pas élémentaire 
 de chaque fonction à la fois. Cela se matérialise de le code dans la fonction bind : celle-ci ne calcule plus les deux fonctions 
 qu'elle possède en argument, mais seulement la première et "renvoie" la deuxième. Ainsi dans cette approche, 
 chaque fonction d'un doco avance de la même manière.\\
@@ -163,30 +164,30 @@ La grande difficulté rencontrée a tournée autour de la marshalisation. En eff
 présence de descripteur de fichier, notamment de pipe et de socket, n'est pas très bon. Aucun descripteur de fichier ne doit 
 être présent dans la portée de la fonction à marshaliser lors de la marshalisation (en cela, je pense particulièrement à des 
 variables globales qui auraient pu être bien pratique). Toute la difficulté de ce constat vient donc de l'impossibilité de 
-posséder un moyen de communication par pipe entre les fonctions marshalisées typiquement des get, des put, et des new_channel 
+posséder un moyen de communication par pipe entre les fonctions marshalisées typiquement des get, des put, et des new\_channel 
 et les autres composantes du programme.\\
 
 Cette difficulté exposée, passons à la strucure de notre solution. Notre implémentation repose sur des serveurs d'exécutions 
 qui seront présents sur les différentes machines qui effectueront les calculs. Ces serveurs sont composés de deux processus 
-principaux :
+principaux :\\
 \begin{itemize}
   \item une entité chargée de récupérer tout ce qui arrive sur le port du serveur et de le rediriger vers un pipe local.
-        La fonction en charge de cette tâche est la fonction "network_buffer". Elle utilise la fonction de haut niveau 
-        establish_server qui fork un nouveau processus charger de la redirection pour chaque connexion entrante. 
+        La fonction en charge de cette tâche est la fonction "network\_buffer". Elle utilise la fonction de haut niveau 
+        establish\_server qui fork un nouveau processus charger de la redirection pour chaque connexion entrante. 
   \item une entité chargée d'interpréter les différentes requêtes. Il lit des informations sur le pipe local alimenté par le 
-        "network_buffer" et y répond de manière appropriée. La fonction en charge de cette tâche est la fonction "request_manager".
+        "network\_buffer" et y répond de manière appropriée. La fonction en charge de cette tâche est la fonction "request\_manager".
         Chaque requête est composée du nom de la requête, d'une 
         en tête contenant les informations d'identification de la requête qui sont l'identifiant du processus qui a 
         envoyé la requête (son PID) et de l'adresse où il se trouve sur le réseau, et de données spécifique à la dite 
-        requête. Les différentes requêtes qui peuvent être rencontrées sont :
-        \begin{itemize}
+        requête. Les différentes requêtes qui peuvent être rencontrées sont :\\
+        \begin{enumerate}
           \item "FORK", cette requête reçoit une fonction marshalisée et va la faire exécuter sur un processus fils. C'est ici 
                 qu'intervient la difficulté décrite au dessus : il nous faut un moyen de communication entre le processus 
-                nouvellement crée et le request_manager. Pour chaque processus, nous allons crée un pipe nommé. Son nom sera 
-                composé du nom de la machine et de son PID. Une autre particularité est que le request_manager s'arrête pas 
+                nouvellement crée et le request\_manager. Pour chaque processus, nous allons crée un pipe nommé. Son nom sera 
+                composé du nom de la machine et de son PID. Une autre particularité est que le request\_manager s'arrête pas 
                 pour attendre son fils, il a d'autre requête à gérer. Nous avons donc mis en place la technique du double 
                 fork pour éviter tout processus zombie.
-          \item "NEW_CHANNEL", cette requête crée une nouvelle channel. Les channels comme dans l'implémentation procédurale
+          \item "NEW\_CHANNEL", cette requête crée une nouvelle channel. Les channels comme dans l'implémentation procédurale
                 sont représentées par des pipes auxquels on ajoute un compteur qui garde en mémoire le nombre d'élements 
                 présent à l'intérieur du pipe.
           \item "PUT", cette requête recoit l'identifiant de la channel et la valeur à y mettre. Il vérifie qu'il y a suffisament 
@@ -197,7 +198,7 @@ principaux :
                 il remet une requête GET identique sur la pile des requêtes à gérer.
           \item "TERMINE", cette requête ne prend pas d'en tête, mais seulement l'identifiant d'un processus et une valeur. 
                 Elle a pour rôle d'envoyer via le pipe nommé une valeur de retour au processus identifié par l'identifiant reçu.\\
-        \end{itemize}
+        \end{enumerate}
 \end{itemize}
 
 Toute les requêtes exceptées la requête TERMINE se termine par l'envoie d'une requête TERMINE aux serveur indiqué par l'adresse 
@@ -207,12 +208,19 @@ Les fonctions du réseau de Kahn peuvent s'exécuter de deux manières différen
 de la fonction bind, ou bien l'appel du processus dans la requête FORK) :
 \begin{itemize}
   \item Soit la fonction se termine et renvoie une valeur, c'est le meilleur cas
-  \item Soit la fonction lève l'exception Exit comme typiquement dans les fonctions get, put, ou new_channel, alors 
+  \item Soit la fonction lève l'exception Exit comme typiquement dans les fonctions get, put, ou new\_channel, alors 
         le processus doit attendre la valeur de retour qui doit lui parvenir par le pipe nommé à son nom.\\
 \end{itemize}
 
-Le dernier point de compréhension de notre code sont les fonctions du réseau de Kahn. Les fonctions get, put et new_channel 
-n'effectuent que des connexions au serveur local pour envoyer la requête adéquate avec les bonnes informations.
+Le dernier point de compréhension de notre code sont les fonctions du réseau de Kahn. Les fonctions get, put et new\_channel 
+n'effectuent que des connexions au serveur local pour envoyer la requête adéquate avec les bonnes informations.\\
+
+Notre implémentation rencontre un léger problème de concurrence du au fonctionnement des fonctions get et put. En effet, 
+ces fonctions effectuent des connexions avec le serveur local par l'intermédiare de socket. Le problème est que l'ouverture 
+d'une connexion ne peut être effectuée q'une seule fois simultanément sur un même port. Lors de l'exécution concurrente 
+d'un get et d'un put, ce phénomène peut provoquer un blocage d'un get qui a déjà ouvert sa connexion mais pas fini sa 
+transaction par un put mis en activité par l'ordonnanceur qui tenterait d'ouvrir une connexion déjà ouverte par le get. Cela 
+bloque momentanément l'exécution jusqu'à ce que le get soit réordonnancé en premier plan pour qu'il termine son exécution.
 
 
 \end{document}
