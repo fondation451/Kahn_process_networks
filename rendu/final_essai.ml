@@ -38,12 +38,10 @@ let make_addr_l file =
     with
     |End_of_file -> out
   in
-  try
-    let chann = open_in file in
-    let addr_l = aux chann [(get_my_addr ())] in
-    close_in chann;
-    List.rev addr_l
-  with Sys_error(_) -> [(get_my_addr ())]
+  let chann = open_in file in
+  let addr_l = aux chann [] in
+  close_in chann;
+  List.rev addr_l
 ;;
 
 let addr_to_string addr =
