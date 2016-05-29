@@ -153,7 +153,54 @@ module Example (K : S) = struct
 
 end
 
-module E = Example(Kahn)
+module Example2 (K : S) = struct
+  module K = K
+  module Lib = Lib(K)
+  open Lib
+
+  let integersplus (qo : int K.out_port) : unit K.process =
+    let rec loop n =
+      (K.put n qo) >>= (fun () -> loop (n + 1))
+    in
+    loop 0
+  
+  let integersmoins (qo : int K.out_port) : unit K.process =
+    let rec loop n =
+      (K.put n qo) >>= (fun () -> loop (n - 2))
+    in
+    loop 0
+  
+  let addd (qi1 : int K.in_port) (qi2 : int K.in_port) (qo : int K.out_port) : unit K.process =
+    let rec loop () =
+      (K.get qi1) >>= 
+      (fun a -> 
+        (K.get qi2) >>=
+        (fun b ->
+          (K.put (a+b) qo) >>= (fun () -> loop ())))
+    in
+    loop ()
+
+  let output (qi : int K.in_port) : unit K.process =
+    let rec loop () =
+      (K.get qi) >>= (fun v -> Format.printf "||||||||||||||||||||||||||||||||||||||||||||||||||||||||%d@." v; print_endline ""; loop ())
+    in
+    loop ()
+
+  let main : unit K.process =
+    (delay K.new_channel ()) >>=
+    (fun (q_in1, q_out1) ->
+      (delay K.new_channel ()) >>=
+      (fun (q_in2, q_out2) -> 
+        (delay K.new_channel ()) >>=
+        (fun (q_in3, q_out3) -> 
+        (K.doco [integersplus q_out1; 
+                 integersmoins q_out2;
+                 addd q_in1 q_in2 q_out3;
+                 output q_in3]))))
+
+end
+
+module E = Example2(Kahn)
 
 let _ =
   Kahn.run E.main

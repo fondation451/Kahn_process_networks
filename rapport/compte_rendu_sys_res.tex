@@ -150,7 +150,7 @@ de chaque fonction à la fois. Cela se matérialise de le code dans la fonction 
 qu'elle possède en argument, mais seulement la première et "renvoie" la deuxième. Ainsi dans cette approche, 
 chaque fonction d'un doco avance de la même manière.\\
 
-Concrêtement dans les deux approches, les interruptions du calcul des fonctions est effectuées par des exceptions. Ces exceptions 
+Concrêtement dans les deux approches, les interruptions du calcul des fonctions sont effectuées par des exceptions. Ces exceptions 
 contiennent la suite du calcul à effectuer, c'est à dire la continuation, ou bien dans le cas d'un get bloquant le même get réitéré. 
 Ces calculs sont gelés dans l'exception à l'intérieur d'une fonction prenant unit pour argument.
 
@@ -173,11 +173,11 @@ principaux :\\
 \begin{itemize}
   \item une entité chargée de récupérer tout ce qui arrive sur le port du serveur et de le rediriger vers un pipe local.
         La fonction en charge de cette tâche est la fonction "network\_buffer". Elle utilise la fonction de haut niveau 
-        establish\_server qui fork un nouveau processus charger de la redirection pour chaque connexion entrante. 
-  \item une entité chargée d'interpréter les différentes requêtes. Il lit des informations sur le pipe local alimenté par le 
+        establish\_server qui fork un nouveau processus chargé de la redirection pour chaque connexion entrante. 
+  \item une entité chargée d'interpréter les différentes requêtes. Elle lit des informations sur le pipe local alimenté par le 
         "network\_buffer" et y répond de manière appropriée. La fonction en charge de cette tâche est la fonction "request\_manager".
         Chaque requête est composée du nom de la requête, d'une 
-        en tête contenant les informations d'identification de la requête qui sont l'identifiant du processus qui a 
+        en-tête contenant les informations d'identification de la requête qui sont l'identifiant du processus qui a 
         envoyé la requête (son PID) et de l'adresse où il se trouve sur le réseau, et de données spécifique à la dite 
         requête. Les différentes requêtes qui peuvent être rencontrées sont :\\
         \begin{enumerate}

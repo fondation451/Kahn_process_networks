@@ -155,7 +155,118 @@ module Example (K : S) = struct
 
 end
 
-module E = Example(Kahn)
+module RSA (K : S) = struct
+  module K = K;;
+  module Lib = Lib(K);;
+  open Lib;;
+  
+  let is_prime n =
+    let rec aux tmp fin =
+      if tmp > fin then
+        true
+      else
+        n mod tmp <> 0 && aux (tmp+1) fin
+    in
+    aux 2 (int_of_float (sqrt (float_of_int n)))
+  ;;
+  
+  let find_big_prime () =
+    print_endline "OK";
+    let rec find_ a = if is_prime a then a else find_ (a+1) in
+    print_endline "BON";
+    let a = Random.int 1000 in
+    let b = Random.int 1000 in
+    find_ a, find_ b
+  ;;
+  
+  let rec pgcd a b =
+    if b = 0 then
+      a
+    else
+      pgcd (a/b) (a mod b)
+  ;;
+  
+  let inverse_mod e phi =
+    let rec aux r u v r' u' v' =
+      if r' = 0 then
+        u
+      else
+        let q = r / r' in
+        aux r' u' v' (r - q * r') (u - q * u') (v - q * v')
+    in
+    aux e 1 0 phi 0 1
+  ;;
+  
+  let gen_e phi =
+    let rec aux out = if pgcd phi out = 1 then out else aux (out+1) in
+    aux (Random.int phi)
+  ;;
+  
+  let gen_key () =
+    print_endline "rtyui1";
+    let p, q = find_big_prime () in
+    print_endline "rtyui2";
+    let n = p * q in
+    print_endline "rtyui3";
+    let phi = (p-1) * (q-1) in
+    print_endline "rtyui4";
+    let e = gen_e phi in
+    print_endline "rtyui5";
+    let d = inverse_mod e phi in
+    print_endline "rtyui";
+    ((n, e), (n, d))
+  ;;
+  
+  let power_mod x p n =
+    let rec aux p out =
+      if p = 0 then
+        out
+      else
+        aux (p-1) ((out * x) mod n)
+    in
+    aux p 1
+  ;;
+  
+  let crypt_fun m c =
+    let n, e = c in
+    power_mod m e n
+  ;;
+  
+  let output (qi : int K.in_port) : unit K.process =
+    let rec loop () =
+      (K.get qi) >>= (fun v -> Format.printf "||||||||||||||||||||||||||||||||||||||||||||||||||||||||%d@." v; print_endline ""; loop ())
+    in
+    loop ()
+  ;;
+  
+  let crypt t c : int K.process =
+    K.return (crypt_fun t c)
+  ;;
+  
+  let doco_crypt c (qi : int K.in_port) (qo : int K.out_port) : unit K.process =
+    let texte = "" in
+    let fin = String.length texte in
+    let rec create_proc n out =
+      if n >= fin then
+        out
+      else
+        create_proc (n+1) (((crypt (Char.code texte.[n]) c) >>= (fun v -> K.put v qo))::(output qi)::out)
+    in
+    K.doco (create_proc 0 [])
+  ;;
+
+  let main : unit K.process =
+    Random.init 30;
+    (delay K.new_channel ()) >>=
+    (fun (q_in, q_out) ->
+      let cc, cd = gen_key () in
+      print_endline "YOUPI";
+      doco_crypt cc q_in q_out)
+  ;;
+
+end
+
+module E = RSA(Kahn)
 
 let _ =
   Kahn.run E.main

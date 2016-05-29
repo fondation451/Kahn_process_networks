@@ -19,8 +19,15 @@ let id_channel = ref 0;;
 let pipe = ref [];;
 let is_serveur = ref false;;
 
-let get_my_addr () =
+(* let get_my_addr () =
   ADDR_INET((Unix.gethostbyname(Unix.gethostname())).Unix.h_addr_list.(0), port_nb)
+;; *)
+
+let get_my_addr () =
+  let chann = open_in addr_file in
+  let addr = ADDR_INET(inet_addr_of_string (input_line chann), port_nb) in
+  close_in chann;
+  addr
 ;;
 
 let make_addr_l file =
@@ -424,7 +431,54 @@ module Example (K : S) = struct
 
 end
 
-module E = Example(Kahn)
+module Example2 (K : S) = struct
+  module K = K
+  module Lib = Lib(K)
+  open Lib
+
+  let integersplus (qo : int K.out_port) : unit K.process =
+    let rec loop n =
+      (K.put n qo) >>= (fun () -> loop (n + 1))
+    in
+    loop 0
+  
+  let integersmoins (qo : int K.out_port) : unit K.process =
+    let rec loop n =
+      (K.put n qo) >>= (fun () -> loop (n - 2))
+    in
+    loop 0
+  
+  let addd (qi1 : int K.in_port) (qi2 : int K.in_port) (qo : int K.out_port) : unit K.process =
+    let rec loop () =
+      (K.get qi1) >>= 
+      (fun a -> 
+        (K.get qi2) >>=
+        (fun b ->
+          (K.put (a+b) qo) >>= (fun () -> loop ())))
+    in
+    loop ()
+
+  let output (qi : int K.in_port) : unit K.process =
+    let rec loop () =
+      (K.get qi) >>= (fun v -> Format.printf "||||||||||||||||||||||||||||||||||||||||||||||||||||||||%d@." v; print_endline ""; loop ())
+    in
+    loop ()
+
+  let main : unit K.process =
+    (delay K.new_channel ()) >>=
+    (fun (q_in1, q_out1) ->
+      (delay K.new_channel ()) >>=
+      (fun (q_in2, q_out2) -> 
+        (delay K.new_channel ()) >>=
+        (fun (q_in3, q_out3) -> 
+        (K.doco [integersplus q_out1; 
+                 integersmoins q_out2;
+                 addd q_in1 q_in2 q_out3;
+                 output q_in3]))))
+
+end
+
+module E = Example2(Kahn)
 
 (*****)
 
